@@ -38,9 +38,9 @@
     "start:tunnel": "./packages/cli/bin/n8n start --tunnel",
     "start:windows": "cd packages/cli/bin && n8n",
     "test": "JEST_JUNIT_CLASSNAME={filepath} turbo run test",
-    "test:backend": "turbo run test:backend --concurrency=1",
-    "test:frontend": "turbo run test:frontend --concurrency=1",
-    "test:nodes": "turbo run test:nodes --concurrency=1",
+    "test:backend": "turbo run test:backend",
+    "test:frontend": "turbo run test:frontend",
+    "test:nodes": "turbo run test:nodes",
     "watch": "turbo run watch --parallel",
     "webhook": "./packages/cli/bin/n8n webhook",
     "worker": "./packages/cli/bin/n8n worker"

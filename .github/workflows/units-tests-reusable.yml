@@ -40,7 +40,6 @@ jobs:
     name: Unit tests
     runs-on: blacksmith-4vcpu-ubuntu-2204
     env:
-      TURBO_FORCE: ${{ inputs.ignoreTurboCache || inputs.collectCoverage }}
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -51,12 +50,23 @@ jobs:
         uses: ./.github/actions/setup-and-build
         with:
           node-version: ${{ inputs.nodeVersion }}
-          enable-caching: true
-          cache-suffix: 'unit-tests'
           skip-build: ${{ inputs.cacheKey != '' }}
 
-      - name: Restore cached build artifacts
-        if: ${{ inputs.cacheKey != '' }}
+      - name: Restore cached build artifacts with coverage
+        if: inputs.collectCoverage
+        id: cache-coverage
+        uses: useblacksmith/cache/restore@c5fe29eb0efdf1cf4186b9f7fcbbcbc0cf025662 # v5.0.2
+        with:
+          path: |
+            ./packages/**/dist
+            ./packages/**/coverage
+          key: ${{ github.sha }}-base:unit-tests
+          restore-keys: |
+            -base:unit-tests
+          fail-on-cache-miss: false
+
+      - name: Restore cached build artifacts only
+        if: ${{ inputs.cacheKey != '' && (!inputs.collectCoverage || steps.cache-coverage.outputs.cache-hit != 'true') }}
         uses: useblacksmith/cache/restore@c5fe29eb0efdf1cf4186b9f7fcbbcbc0cf025662 # v5.0.2
         with:
           path: ./packages/**/dist
@@ -64,14 +74,29 @@ jobs:
           fail-on-cache-miss: true
 
       - name: Test Backend
+        env:
+          TURBO_FORCE: ${{ inputs.ignoreTurboCache || (inputs.collectCoverage && steps.cache-coverage.outputs.cache-hit != 'true') }}
         run: pnpm test:backend
 
       - name: Test Nodes
+        env:
+          TURBO_FORCE: ${{ inputs.ignoreTurboCache || (inputs.collectCoverage && steps.cache-coverage.outputs.cache-hit != 'true') }}
         run: pnpm test:nodes
 
       - name: Test Frontend
         if: ${{ !inputs.skipFrontendTests }}
+        env:
+          TURBO_FORCE: ${{ inputs.ignoreTurboCache || (inputs.collectCoverage && steps.cache-coverage.outputs.cache-hit != 'true') }}
         run: pnpm test:frontend
+
+      - name: Cache build artifacts with coverage
+        if: inputs.collectCoverage
+        uses: useblacksmith/cache/save@c5fe29eb0efdf1cf4186b9f7fcbbcbc0cf025662 # v5.0.2
+        with:
+          path: |
+            ./packages/**/dist
+            ./packages/**/coverage
+          key: ${{ github.sha }}-base:unit-tests
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
